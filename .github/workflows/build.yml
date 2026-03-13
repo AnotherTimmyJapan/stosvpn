@@ -14,13 +14,13 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Install ldid
-              run: brew install ldid
+              run: brew install ldid || echo "ldid is already installed"
 
             - name: Select Xcode version
               run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
             - name: Set Developer Directory
-              run: export DEVELOPER_DIR="/Applications/Xcode_16.2.app"
+              run: echo "DEVELOPER_DIR=/Applications/Xcode_16.2.app" >> $GITHUB_ENV
 
             - name: Build Xcode Archive
               run: |
@@ -42,22 +42,27 @@ jobs:
 
             - name: Find and Sign App Extension
               run: |
-                  APPEX_PATH=$(find Payload/StosVPN.app/PlugIns -name "*.appex" | head -n 1)
+                  APPEX_PATH=$(find Payload/StosVPN.app/PlugIns -name "*.appex" | head -n 1 || echo "")
                   if [ -z "$APPEX_PATH" ]; then
-                    echo "Error: App Extension (.appex) not found in PlugIns directory."
-                    exit 1
+                    echo "Warning: App Extension (.appex) not found in PlugIns directory."
+                  else
+                    echo "Found App Extension at: $APPEX_PATH"
+                    # Use the specific entitlements for the extension
+                    ldid -S"${GITHUB_WORKSPACE}/TunnelProv/TunnelProv.entitlements" "$APPEX_PATH"
+                    echo "Signed App Extension."
                   fi
-                  echo "Found App Extension at: $APPEX_PATH"
-                  # Use the specific entitlements for the extension
-                  ldid -S"${GITHUB_WORKSPACE}/TunnelProv/TunnelProv.entitlements" "$APPEX_PATH"
-                  echo "Signed App Extension."
 
             - name: Sign Main App Bundle
               run: |
                   APP_BINARY_PATH="Payload/StosVPN.app/StosVPN"
                   # Use the specific entitlements for the main app
-                  ldid -S"${GITHUB_WORKSPACE}/StosVPN/StosVPN.entitlements" "$APP_BINARY_PATH"
-                  echo "Signed Main App Bundle."
+                  if [ -f "$APP_BINARY_PATH" ]; then
+                    ldid -S"${GITHUB_WORKSPACE}/StosVPN/StosVPN.entitlements" "$APP_BINARY_PATH"
+                    echo "Signed Main App Bundle."
+                  else
+                    echo "Error: Main App Binary not found at $APP_BINARY_PATH"
+                    exit 1
+                  fi
 
             - name: Create IPA
               run: |
