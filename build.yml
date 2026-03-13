@@ -1,0 +1,21 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: List Available Destinations
+        run: xcrun simctl list devices
+
+      - name: Build with xcodebuild
+        run: |
+          xcodebuild -scheme YourSchemeName -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.2' build
